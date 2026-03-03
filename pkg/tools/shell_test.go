@@ -149,6 +149,40 @@ func TestShellTool_DangerousCommand(t *testing.T) {
 	}
 }
 
+func TestShellTool_SudoInstallAllowedByGuard(t *testing.T) {
+	tool, err := NewExecTool("", false)
+	if err != nil {
+		t.Errorf("unable to configure exec tool: %s", err)
+	}
+
+	if guardErr := tool.guardCommand("sudo apt install -y curl", ""); guardErr != "" {
+		t.Fatalf("expected sudo install command to be allowed, got: %s", guardErr)
+	}
+}
+
+func TestShellTool_SudoGenericCommandAllowedByGuard(t *testing.T) {
+	tool, err := NewExecTool("", false)
+	if err != nil {
+		t.Errorf("unable to configure exec tool: %s", err)
+	}
+
+	if guardErr := tool.guardCommand("sudo echo hello", ""); guardErr != "" {
+		t.Fatalf("expected sudo command to be allowed, got: %s", guardErr)
+	}
+}
+
+func TestShellTool_SudoDangerousCommandStillBlocked(t *testing.T) {
+	tool, err := NewExecTool("", false)
+	if err != nil {
+		t.Errorf("unable to configure exec tool: %s", err)
+	}
+
+	guardErr := tool.guardCommand("sudo rm -rf /", "")
+	if !strings.Contains(guardErr, "dangerous pattern detected") {
+		t.Fatalf("expected sudo dangerous command to be blocked, got: %s", guardErr)
+	}
+}
+
 // TestShellTool_MissingCommand verifies error handling for missing command
 func TestShellTool_MissingCommand(t *testing.T) {
 	tool, err := NewExecTool("", false)

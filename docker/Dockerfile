@@ -20,7 +20,7 @@ RUN make build
 # ============================================================
 FROM alpine:3.23
 
-RUN apk add --no-cache ca-certificates tzdata curl
+RUN apk add --no-cache ca-certificates tzdata curl sudo
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
@@ -31,7 +31,10 @@ COPY --from=builder /src/build/picoclaw /usr/local/bin/picoclaw
 
 # Create non-root user and group
 RUN addgroup -g 1000 picoclaw && \
-    adduser -D -u 1000 -G picoclaw picoclaw
+    adduser -D -u 1000 -G picoclaw picoclaw && \
+    mkdir -p /etc/sudoers.d && \
+    echo "picoclaw ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/picoclaw && \
+    chmod 0440 /etc/sudoers.d/picoclaw
 
 # Switch to non-root user
 USER picoclaw
