@@ -39,6 +39,27 @@ func TestShellTool_Success(t *testing.T) {
 	}
 }
 
+func TestShellTool_StdinInput(t *testing.T) {
+	tool, err := NewExecTool("", false)
+	if err != nil {
+		t.Errorf("unable to configure exec tool: %s", err)
+	}
+
+	ctx := context.Background()
+	args := map[string]any{
+		"command": "cat",
+		"stdin":   "line-1\nline-2\n",
+	}
+
+	result := tool.Execute(ctx, args)
+	if result.IsError {
+		t.Fatalf("expected stdin command to succeed, got error: %s", result.ForLLM)
+	}
+	if !strings.Contains(result.ForLLM, "line-1") || !strings.Contains(result.ForLLM, "line-2") {
+		t.Fatalf("expected stdin content in output, got: %s", result.ForLLM)
+	}
+}
+
 // TestShellTool_Failure verifies failed command execution
 func TestShellTool_Failure(t *testing.T) {
 	tool, err := NewExecTool("", false)

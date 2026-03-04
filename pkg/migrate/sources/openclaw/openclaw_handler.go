@@ -136,7 +136,7 @@ func findSourceConfig(sourceHome string) (string, error) {
 }
 
 func rewriteWorkspacePath(path string) string {
-	path = strings.Replace(path, ".openclaw", ".picoclaw", 1)
+	path = strings.Replace(path, ".openclaw", ".meowclaw", 1)
 	return path
 }
 

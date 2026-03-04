@@ -46,7 +46,7 @@ func NewMigrateCommand() *cobra.Command {
 	cmd.Flags().StringVar(&opts.SourceHome, "source-home", "",
 		"Override source home directory (default: ~/.openclaw)")
 	cmd.Flags().StringVar(&opts.TargetHome, "target-home", "",
-		"Override target home directory (default: ~/.picoclaw)")
+		"Override target home directory (default: ~/.meowclaw)")
 
 	return cmd
 }

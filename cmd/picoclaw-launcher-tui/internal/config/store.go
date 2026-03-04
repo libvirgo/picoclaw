@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	configDirName  = ".picoclaw"
-	configFileName = "config.json"
+	configDirName       = ".meowclaw"
+	legacyConfigDirName = ".picoclaw"
+	configFileName      = "config.json"
 )
 
 func ConfigPath() (string, error) {
@@ -26,7 +27,15 @@ func ConfigDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(home, configDirName), nil
+	meowDir := filepath.Join(home, configDirName)
+	if _, err := os.Stat(meowDir); err == nil {
+		return meowDir, nil
+	}
+	legacyDir := filepath.Join(home, legacyConfigDirName)
+	if _, err := os.Stat(legacyDir); err == nil {
+		return legacyDir, nil
+	}
+	return meowDir, nil
 }
 
 func Load() (*picoclawconfig.Config, error) {

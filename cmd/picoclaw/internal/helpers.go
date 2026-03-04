@@ -20,7 +20,15 @@ var (
 
 func GetConfigPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".picoclaw", "config.json")
+	meowPath := filepath.Join(home, ".meowclaw", "config.json")
+	if _, err := os.Stat(meowPath); err == nil {
+		return meowPath
+	}
+	legacyPath := filepath.Join(home, ".picoclaw", "config.json")
+	if _, err := os.Stat(legacyPath); err == nil {
+		return legacyPath
+	}
+	return meowPath
 }
 
 func LoadConfig() (*config.Config, error) {

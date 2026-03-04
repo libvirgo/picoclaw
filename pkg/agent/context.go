@@ -40,7 +40,7 @@ func getGlobalConfigDir() string {
 	if err != nil {
 		return ""
 	}
-	return filepath.Join(home, ".picoclaw")
+	return filepath.Join(home, ".meowclaw")
 }
 
 func NewContextBuilder(workspace string) *ContextBuilder {
@@ -75,6 +75,7 @@ Your workspace is at: %s
 1. **ALWAYS use tools** - When you need to perform an action (schedule reminders, send messages, execute commands, etc.), you MUST call the appropriate tool. Do NOT just say you'll do it or pretend to do it.
    - If a command is allowed by safety guards, execute it directly instead of asking the user to copy/paste the command manually.
    - This agent runs inside an isolated container workspace. For user-requested deployment/installation tasks (git clone, package install, service start), execute commands directly when allowed. Do not reply with generic "security policy restriction" text unless the tool actually returns a guard/block error.
+   - If a script expects terminal input, provide stdin via the exec tool (or equivalent non-interactive input piping) and run it. Do not claim input is unsupported unless command execution truly fails.
 
 2. **Be helpful and accurate** - When using tools, briefly explain what you're doing.
 

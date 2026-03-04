@@ -40,6 +40,11 @@ func (c *AuthCredential) NeedsRefresh() bool {
 
 func authFilePath() string {
 	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".meowclaw", "auth.json")
+}
+
+func legacyAuthFilePath() string {
+	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".picoclaw", "auth.json")
 }
 
@@ -48,9 +53,17 @@ func LoadStore() (*AuthStore, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return &AuthStore{Credentials: make(map[string]*AuthCredential)}, nil
+			legacyData, legacyErr := os.ReadFile(legacyAuthFilePath())
+			if legacyErr == nil {
+				data = legacyData
+			} else if os.IsNotExist(legacyErr) {
+				return &AuthStore{Credentials: make(map[string]*AuthCredential)}, nil
+			} else {
+				return nil, legacyErr
+			}
+		} else {
+			return nil, err
 		}
-		return nil, err
 	}
 
 	var store AuthStore
@@ -105,9 +118,10 @@ func DeleteCredential(provider string) error {
 }
 
 func DeleteAllCredentials() error {
-	path := authFilePath()
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		return err
+	for _, path := range []string{authFilePath(), legacyAuthFilePath()} {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
 	}
 	return nil
 }
