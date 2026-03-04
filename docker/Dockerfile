@@ -27,7 +27,9 @@ RUN apk add --no-cache \
     sudo \
     bash \
     git \
+    github-cli \
     jq \
+    tmux \
     python3 \
     py3-pip \
     nodejs \
