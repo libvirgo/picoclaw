@@ -171,15 +171,15 @@ func TestShellTool_MultipleSudoPackageCommandsAllowedByGuard(t *testing.T) {
 	}
 }
 
-func TestShellTool_SudoNonPackageCommandBlocked(t *testing.T) {
+func TestShellTool_SudoNonPackageCommandAllowed(t *testing.T) {
 	tool, err := NewExecTool("", false)
 	if err != nil {
 		t.Errorf("unable to configure exec tool: %s", err)
 	}
 
 	guardErr := tool.guardCommand("sudo echo hello", "")
-	if !strings.Contains(guardErr, "sudo is restricted") {
-		t.Fatalf("expected sudo non-package command to be blocked, got: %s", guardErr)
+	if guardErr != "" {
+		t.Fatalf("expected sudo non-package command to be allowed, got: %s", guardErr)
 	}
 }
 

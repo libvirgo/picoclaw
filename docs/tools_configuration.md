@@ -68,20 +68,17 @@ By default, PicoClaw blocks the following dangerous commands:
 - Permission changes: `chmod`, `chown`
 - Process control: `pkill`, `killall`, `kill -9`
 - Remote operations: `curl | sh`, `wget | sh`, `ssh`
-- Package removal: `apt remove/purge`, `yum remove`, `dnf remove`, `apk del`, `npm install -g`, `pip install --user`
 - Containers: `docker run`, `docker exec`
 - Git: `git push`, `git force`
 - Other: `eval`, `source *.sh`
 
 ### Sudo Policy
 
-`sudo` is available for package management only, for example:
+`sudo` commands are allowed. Dangerous commands are still blocked by the safety guard patterns above.
 
 - `sudo apk add curl`
 - `sudo apt install -y jq`
-- `sudo dnf install -y git`
-
-Non-package `sudo` commands are blocked by the safety guard.
+- `sudo echo ok`
 
 ### Configuration Example
 

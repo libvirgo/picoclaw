@@ -54,12 +54,6 @@ var defaultDenyPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\bkill\s+-[9]\b`),
 	regexp.MustCompile(`\bcurl\b.*\|\s*(sh|bash)`),
 	regexp.MustCompile(`\bwget\b.*\|\s*(sh|bash)`),
-	regexp.MustCompile(`\bnpm\s+install\s+-g\b`),
-	regexp.MustCompile(`\bpip\s+install\s+--user\b`),
-	regexp.MustCompile(`\bapt(-get)?\s+(remove|purge)\b`),
-	regexp.MustCompile(`\byum\s+remove\b`),
-	regexp.MustCompile(`\bdnf\s+remove\b`),
-	regexp.MustCompile(`\bapk\s+del\b`),
 	regexp.MustCompile(`\bdocker\s+run\b`),
 	regexp.MustCompile(`\bdocker\s+exec\b`),
 	regexp.MustCompile(`\bgit\s+push\b`),
@@ -258,10 +252,6 @@ func (t *ExecTool) guardCommand(command, cwd string) string {
 	cmd := strings.TrimSpace(command)
 	lower := strings.ToLower(cmd)
 
-	if !isAllowedSudoUsage(lower) {
-		return "Command blocked by safety guard (sudo is restricted to package install/update commands)"
-	}
-
 	for _, pattern := range t.denyPatterns {
 		if pattern.MatchString(lower) {
 			return "Command blocked by safety guard (dangerous pattern detected)"
@@ -312,41 +302,6 @@ func (t *ExecTool) guardCommand(command, cwd string) string {
 	}
 
 	return ""
-}
-
-func isAllowedSudoUsage(command string) bool {
-	tokens := strings.Fields(command)
-	for i := 0; i < len(tokens); i++ {
-		if tokens[i] != "sudo" {
-			continue
-		}
-
-		j := i + 1
-		for j < len(tokens) && strings.HasPrefix(tokens[j], "-") {
-			j++
-		}
-		if j+1 >= len(tokens) {
-			return false
-		}
-
-		tool := strings.Trim(tokens[j], `"'`)
-		action := strings.Trim(tokens[j+1], `"'`)
-
-		allowed := false
-		switch tool {
-		case "apt", "apt-get":
-			allowed = action == "install" || action == "update"
-		case "yum", "dnf":
-			allowed = action == "install" || action == "makecache"
-		case "apk":
-			allowed = action == "add" || action == "update" || action == "upgrade" || action == "search" || action == "info"
-		}
-
-		if !allowed {
-			return false
-		}
-	}
-	return true
 }
 
 func (t *ExecTool) SetTimeout(timeout time.Duration) {

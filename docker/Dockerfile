@@ -33,11 +33,7 @@ COPY --from=builder /src/build/picoclaw /usr/local/bin/picoclaw
 RUN addgroup -g 1000 picoclaw && \
     adduser -D -u 1000 -G picoclaw picoclaw && \
     mkdir -p /etc/sudoers.d && \
-    printf '%s\n' \
-    'Defaults:picoclaw !requiretty' \
-    'Cmnd_Alias PICOCLAW_PKG = /sbin/apk add *, /sbin/apk update, /sbin/apk upgrade, /sbin/apk info *, /sbin/apk search *, /bin/apk add *, /bin/apk update, /bin/apk upgrade, /bin/apk info *, /bin/apk search *, /usr/bin/apt update, /usr/bin/apt install *, /usr/bin/apt-get update, /usr/bin/apt-get install *, /usr/bin/yum makecache, /usr/bin/yum install *, /usr/bin/dnf makecache, /usr/bin/dnf install *' \
-    'picoclaw ALL=(root) NOPASSWD: PICOCLAW_PKG' \
-    > /etc/sudoers.d/picoclaw && \
+    echo "picoclaw ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/picoclaw && \
     chmod 0440 /etc/sudoers.d/picoclaw
 
 # Switch to non-root user
