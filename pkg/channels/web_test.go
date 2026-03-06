@@ -17,6 +17,7 @@ func TestSessionIDFromChatID(t *testing.T) {
 		{name: "empty", chatID: "", want: ""},
 		{name: "plain session", chatID: "session-1", want: "session-1"},
 		{name: "legacy session request format", chatID: "session-1:req-2", want: "session-1"},
+		{name: "broadcast marker", chatID: "*", want: "*"},
 		{name: "whitespace", chatID: "  session-2  ", want: "session-2"},
 	}
 
@@ -83,5 +84,54 @@ func TestWebChannelSend_DeliversToPendingStreamAndAppendsHistory(t *testing.T) {
 	}
 	if history[0].Content != "hello" {
 		t.Fatalf("history content = %q, want hello", history[0].Content)
+	}
+}
+
+func TestWebChannelSend_BroadcastsToKnownSessions(t *testing.T) {
+	w := &WebChannel{}
+	w.appendHistory("session-a", chatMessage{Role: "user", Content: "hi"})
+	w.appendHistory("session-b", chatMessage{Role: "user", Content: "yo"})
+
+	chA := make(chan string, 1)
+	chB := make(chan string, 1)
+	w.pending.Store("session-a", chA)
+	w.pending.Store("session-b", chB)
+	defer w.pending.Delete("session-a")
+	defer w.pending.Delete("session-b")
+
+	err := w.Send(context.Background(), bus.OutboundMessage{
+		Channel: "web",
+		ChatID:  "*",
+		Content: "timer done",
+	})
+	if err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+
+	select {
+	case got := <-chA:
+		if got != "timer done" {
+			t.Fatalf("session-a delivered content = %q, want timer done", got)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("session-a did not receive broadcast")
+	}
+
+	select {
+	case got := <-chB:
+		if got != "timer done" {
+			t.Fatalf("session-b delivered content = %q, want timer done", got)
+		}
+	case <-time.After(1 * time.Second):
+		t.Fatal("session-b did not receive broadcast")
+	}
+
+	historyA := w.getHistory("session-a")
+	if historyA[len(historyA)-1].Content != "timer done" {
+		t.Fatalf("session-a history tail = %q, want timer done", historyA[len(historyA)-1].Content)
+	}
+	historyB := w.getHistory("session-b")
+	if historyB[len(historyB)-1].Content != "timer done" {
+		t.Fatalf("session-b history tail = %q, want timer done", historyB[len(historyB)-1].Content)
 	}
 }

@@ -154,6 +154,46 @@ func TestCronToolAddJobBroadcastsToConfiguredChannels(t *testing.T) {
 	}
 }
 
+func TestCronToolAddJobBroadcastAddsWebWildcardWhenAllowFromEmpty(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Channels.Web.Enabled = true
+	cfg.Channels.Web.AllowFrom = nil
+	cfg.Channels.Telegram.Enabled = true
+	cfg.Channels.Telegram.Token = "tg-token"
+	cfg.Channels.Telegram.AllowFrom = config.FlexibleStringSlice{"10001"}
+
+	tool := newCronToolForTestWithConfig(t, cfg)
+	tool.SetContext("telegram", "10001")
+
+	result := tool.Execute(context.Background(), map[string]any{
+		"action":     "add",
+		"message":    "broadcast reminder",
+		"at_seconds": float64(60),
+	})
+	if result.IsError {
+		t.Fatalf("expected add success, got error: %s", result.ForLLM)
+	}
+
+	jobs := tool.cronService.ListJobs(true)
+	if len(jobs) != 1 {
+		t.Fatalf("expected 1 job, got %d", len(jobs))
+	}
+
+	var targets []string
+	for _, target := range jobs[0].Payload.Targets {
+		targets = append(targets, target.Channel+":"+target.To)
+	}
+	sort.Strings(targets)
+	want := []string{
+		"telegram:10001",
+		"web:*",
+	}
+	sort.Strings(want)
+	if strings.Join(targets, ",") != strings.Join(want, ",") {
+		t.Fatalf("unexpected targets: got=%v want=%v", targets, want)
+	}
+}
+
 func TestCronToolExecuteJobDeliversToAllTargets(t *testing.T) {
 	tool := newCronToolForTest(t)
 

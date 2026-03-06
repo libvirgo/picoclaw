@@ -48,6 +48,8 @@ var supportedCronChannels = map[string]struct{}{
 	"pico":            {},
 }
 
+const cronWebBroadcastTarget = "*"
+
 // NewCronTool creates a new CronTool
 // execTimeout: 0 means no timeout, >0 sets the timeout duration
 func NewCronTool(
@@ -334,7 +336,13 @@ func (t *CronTool) resolveNotificationTargets(sourceChannel, sourceChatID string
 		}
 	}
 
-	appendConfigTargets(ch.Web.Enabled, "web", ch.Web.AllowFrom)
+	if ch.Web.Enabled {
+		if len(ch.Web.AllowFrom) == 0 {
+			appendTarget("web", cronWebBroadcastTarget)
+		} else {
+			appendConfigTargets(true, "web", ch.Web.AllowFrom)
+		}
+	}
 	appendConfigTargets(ch.Telegram.Enabled && strings.TrimSpace(ch.Telegram.Token) != "", "telegram", ch.Telegram.AllowFrom)
 	appendConfigTargets(ch.Feishu.Enabled, "feishu", ch.Feishu.AllowFrom)
 	appendConfigTargets(ch.Discord.Enabled && strings.TrimSpace(ch.Discord.Token) != "", "discord", ch.Discord.AllowFrom)

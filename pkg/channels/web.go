@@ -18,6 +18,7 @@ import (
 )
 
 const webChannelPort = 18791
+const webBroadcastChatID = "*"
 
 type chatMessage struct {
 	Role    string `json:"role"`
@@ -86,20 +87,53 @@ func (w *WebChannel) Send(ctx context.Context, msg bus.OutboundMessage) error {
 	if sessionID == "" {
 		return nil
 	}
-
-	if ch, ok := w.pending.Load(sessionID); ok {
-		select {
-		case ch.(chan string) <- msg.Content:
-		case <-time.After(5 * time.Second):
-			logger.WarnCF("web", "Timeout sending to response channel", map[string]any{
-				"chat_id": msg.ChatID,
-			})
-		}
+	if sessionID == webBroadcastChatID {
+		w.broadcastToKnownSessions(msg.Content)
+		return nil
 	}
+
+	w.deliverToPendingSession(sessionID, msg.Content)
+
 	if strings.TrimSpace(msg.Content) != "" {
 		w.appendHistory(sessionID, chatMessage{Role: "assistant", Content: msg.Content})
 	}
 	return nil
+}
+
+func (w *WebChannel) deliverToPendingSession(sessionID, content string) {
+	if ch, ok := w.pending.Load(sessionID); ok {
+		select {
+		case ch.(chan string) <- content:
+		case <-time.After(5 * time.Second):
+			logger.WarnCF("web", "Timeout sending to response channel", map[string]any{
+				"session_id": sessionID,
+			})
+		}
+	}
+}
+
+func (w *WebChannel) broadcastToKnownSessions(content string) {
+	sessions := make(map[string]struct{})
+
+	w.history.Range(func(key, _ any) bool {
+		if sid, ok := key.(string); ok && strings.TrimSpace(sid) != "" {
+			sessions[sid] = struct{}{}
+		}
+		return true
+	})
+	w.pending.Range(func(key, _ any) bool {
+		if sid, ok := key.(string); ok && strings.TrimSpace(sid) != "" {
+			sessions[sid] = struct{}{}
+		}
+		return true
+	})
+
+	for sid := range sessions {
+		w.deliverToPendingSession(sid, content)
+		if strings.TrimSpace(content) != "" {
+			w.appendHistory(sid, chatMessage{Role: "assistant", Content: content})
+		}
+	}
 }
 
 func (w *WebChannel) handleChat(wr http.ResponseWriter, r *http.Request) {
