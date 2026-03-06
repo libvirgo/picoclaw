@@ -134,6 +134,7 @@ func registerSharedTools(
 			})
 		})
 		agent.Tools.Register(messageTool)
+		agent.Tools.Register(tools.NewMeowClawRuntimeStatusTool(cfg))
 
 		// Skill discovery and installation tools
 		registryMgr := skills.NewRegistryManagerFromConfig(skills.RegistryConfig{
