@@ -24,12 +24,18 @@ type CronSchedule struct {
 }
 
 type CronPayload struct {
-	Kind    string `json:"kind"`
-	Message string `json:"message"`
-	Command string `json:"command,omitempty"`
-	Deliver bool   `json:"deliver"`
-	Channel string `json:"channel,omitempty"`
-	To      string `json:"to,omitempty"`
+	Kind    string       `json:"kind"`
+	Message string       `json:"message"`
+	Command string       `json:"command,omitempty"`
+	Deliver bool         `json:"deliver"`
+	Channel string       `json:"channel,omitempty"`
+	To      string       `json:"to,omitempty"`
+	Targets []CronTarget `json:"targets,omitempty"`
+}
+
+type CronTarget struct {
+	Channel string `json:"channel"`
+	To      string `json:"to"`
 }
 
 type CronJobState struct {
@@ -346,11 +352,19 @@ func (cs *CronService) AddJob(
 	message string,
 	deliver bool,
 	channel, to string,
+	targets []CronTarget,
 ) (*CronJob, error) {
 	cs.mu.Lock()
 	defer cs.mu.Unlock()
 
 	now := time.Now().UnixMilli()
+
+	primaryChannel := channel
+	primaryTo := to
+	if len(targets) > 0 {
+		primaryChannel = targets[0].Channel
+		primaryTo = targets[0].To
+	}
 
 	// One-time tasks (at) should be deleted after execution
 	deleteAfterRun := (schedule.Kind == "at")
@@ -364,8 +378,9 @@ func (cs *CronService) AddJob(
 			Kind:    "agent_turn",
 			Message: message,
 			Deliver: deliver,
-			Channel: channel,
-			To:      to,
+			Channel: primaryChannel,
+			To:      primaryTo,
+			Targets: targets,
 		},
 		State: CronJobState{
 			NextRunAtMS: cs.computeNextRun(&schedule, now),
