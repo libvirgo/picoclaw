@@ -20,6 +20,8 @@ type ContextBuilder struct {
 	workspace    string
 	skillsLoader *skills.SkillsLoader
 	memory       *MemoryStore
+	timezoneName string
+	location     *time.Location
 
 	// Cache for system prompt to avoid rebuilding on every call.
 	// This fixes issue #607: repeated reprocessing of the entire context.
@@ -43,17 +45,33 @@ func getGlobalConfigDir() string {
 	return filepath.Join(home, ".meowclaw")
 }
 
-func NewContextBuilder(workspace string) *ContextBuilder {
+func NewContextBuilder(workspace string, timezone ...string) *ContextBuilder {
 	// builtin skills: skills directory in current project
 	// Use the skills/ directory under the current working directory
 	wd, _ := os.Getwd()
 	builtinSkillsDir := filepath.Join(wd, "skills")
 	globalSkillsDir := filepath.Join(getGlobalConfigDir(), "skills")
+	loc := time.Local
+	timezoneName := strings.TrimSpace(loc.String())
+	if len(timezone) > 0 && strings.TrimSpace(timezone[0]) != "" {
+		zoneName := strings.TrimSpace(timezone[0])
+		if loaded, err := time.LoadLocation(zoneName); err == nil {
+			loc = loaded
+			timezoneName = zoneName
+		} else {
+			logger.WarnCF("agent", "invalid session timezone, falling back to local timezone", map[string]any{
+				"timezone": zoneName,
+				"error":    err.Error(),
+			})
+		}
+	}
 
 	return &ContextBuilder{
 		workspace:    workspace,
 		skillsLoader: skills.NewSkillsLoader(workspace, globalSkillsDir, builtinSkillsDir),
 		memory:       NewMemoryStore(workspace),
+		timezoneName: timezoneName,
+		location:     loc,
 	}
 }
 
@@ -366,11 +384,34 @@ func (cb *ContextBuilder) LoadBootstrapFiles() string {
 // See: https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching
 // See: https://platform.openai.com/docs/guides/prompt-caching
 func (cb *ContextBuilder) buildDynamicContext(channel, chatID string) string {
-	now := time.Now().Format("2006-01-02 15:04 (Monday)")
+	nowLocal := time.Now().In(cb.location)
+	nowUTC := time.Now().UTC()
+	zoneName, zoneOffsetSeconds := nowLocal.Zone()
+	offsetSign := "+"
+	if zoneOffsetSeconds < 0 {
+		offsetSign = "-"
+		zoneOffsetSeconds = -zoneOffsetSeconds
+	}
+	offsetHours := zoneOffsetSeconds / 3600
+	offsetMinutes := (zoneOffsetSeconds % 3600) / 60
+	localTime := nowLocal.Format("2006-01-02 15:04 (Monday)")
+	utcTime := nowUTC.Format("2006-01-02 15:04 (Monday)")
 	rt := fmt.Sprintf("%s %s, Go %s", runtime.GOOS, runtime.GOARCH, runtime.Version())
 
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "## Current Time\n%s\n\n## Runtime\n%s", now, rt)
+	fmt.Fprintf(
+		&sb,
+		"## Current Time\n%s [%s, UTC%s%02d:%02d]\nUTC: %s\n\n## Timezone\n%s\n\n## Runtime\n%s",
+		localTime,
+		zoneName,
+		offsetSign,
+		offsetHours,
+		offsetMinutes,
+		utcTime,
+		cb.timezoneName,
+		rt,
+	)
+	fmt.Fprintf(&sb, "\n\n## Scheduling Guardrail\nInterpret local clock phrases (e.g. \"tonight 21:30\") in the timezone above.")
 
 	if channel != "" && chatID != "" {
 		fmt.Fprintf(&sb, "\n\n## Current Session\nChannel: %s\nChat ID: %s", channel, chatID)

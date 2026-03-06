@@ -64,7 +64,11 @@ func NewAgentInstance(
 	sessionsDir := filepath.Join(workspace, "sessions")
 	sessionsManager := session.NewSessionManager(sessionsDir)
 
-	contextBuilder := NewContextBuilder(workspace)
+	contextTimezone := ""
+	if cfg != nil {
+		contextTimezone = cfg.Session.Timezone
+	}
+	contextBuilder := NewContextBuilder(workspace, contextTimezone)
 
 	agentID := routing.DefaultAgentID
 	agentName := ""

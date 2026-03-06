@@ -78,7 +78,7 @@ func (c Config) MarshalJSON() ([]byte, error) {
 	}
 
 	// Only include session if not empty
-	if c.Session.DMScope != "" || len(c.Session.IdentityLinks) > 0 {
+	if c.Session.DMScope != "" || len(c.Session.IdentityLinks) > 0 || c.Session.Timezone != "" {
 		aux.Session = &c.Session
 	}
 
@@ -165,6 +165,7 @@ type AgentBinding struct {
 type SessionConfig struct {
 	DMScope       string              `json:"dm_scope,omitempty"`
 	IdentityLinks map[string][]string `json:"identity_links,omitempty"`
+	Timezone      string              `json:"timezone,omitempty" env:"PICOCLAW_SESSION_TIMEZONE"`
 }
 
 type AgentDefaults struct {

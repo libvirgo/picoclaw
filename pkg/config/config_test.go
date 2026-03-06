@@ -441,4 +441,7 @@ func TestDefaultConfig_DMScope(t *testing.T) {
 	if cfg.Session.DMScope != "per-channel-peer" {
 		t.Errorf("Session.DMScope = %q, want 'per-channel-peer'", cfg.Session.DMScope)
 	}
+	if cfg.Session.Timezone != "Asia/Shanghai" {
+		t.Errorf("Session.Timezone = %q, want 'Asia/Shanghai'", cfg.Session.Timezone)
+	}
 }
