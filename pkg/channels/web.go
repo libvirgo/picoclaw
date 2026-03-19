@@ -20,8 +20,6 @@ import (
 const webChannelPort = 18791
 const webBroadcastChatID = "*"
 
-const webChannelErrorQuotaExhausted = "quota_exhausted"
-
 type chatMessage struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -251,19 +249,7 @@ func (w *WebChannel) handleChat(wr http.ResponseWriter, r *http.Request) {
 }
 
 func classifyWebChannelError(content string) (string, bool) {
-	trimmed := strings.TrimSpace(content)
-	lower := strings.ToLower(trimmed)
-	if !strings.HasPrefix(lower, "error processing message:") {
-		return "", false
-	}
-
-	if strings.Contains(lower, "quota_exhausted") ||
-		strings.Contains(lower, "pre_consume_token_quota_failed") ||
-		strings.Contains(lower, "token quota is not enough") {
-		return webChannelErrorQuotaExhausted, true
-	}
-
-	return "", false
+	return ClassifyUserFacingOutboundError(content)
 }
 
 func (w *WebChannel) handleHistory(wr http.ResponseWriter, r *http.Request) {

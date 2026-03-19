@@ -678,6 +678,64 @@ func TestSendWithRetry_PreSendEditsPlaceholder(t *testing.T) {
 	}
 }
 
+func TestSendWithRetry_TransformsFriendlyErrorForChannel(t *testing.T) {
+	m := newTestManager()
+	var got bus.OutboundMessage
+
+	ch := &mockChannel{
+		sendFn: func(_ context.Context, msg bus.OutboundMessage) error {
+			got = msg
+			return nil
+		},
+	}
+	w := &channelWorker{
+		ch:      ch,
+		limiter: rate.NewLimiter(rate.Inf, 1),
+	}
+
+	msg := bus.OutboundMessage{
+		Channel: "telegram",
+		ChatID:  "1",
+		Content: `Error processing message: API request failed:
+  Status: 402
+  Body:   {"error":"quota_exhausted","message":"credits exhausted"}`,
+	}
+
+	m.sendWithRetry(context.Background(), "telegram", w, msg)
+
+	if got.Content != "喵～当前可用额度已用尽，请充值后继续使用。" {
+		t.Fatalf("unexpected transformed content: %q", got.Content)
+	}
+}
+
+func TestSendWithRetry_TransformsWebErrorMarker(t *testing.T) {
+	m := newTestManager()
+	var got bus.OutboundMessage
+
+	ch := &mockChannel{
+		sendFn: func(_ context.Context, msg bus.OutboundMessage) error {
+			got = msg
+			return nil
+		},
+	}
+	w := &channelWorker{
+		ch:      ch,
+		limiter: rate.NewLimiter(rate.Inf, 1),
+	}
+
+	msg := bus.OutboundMessage{
+		Channel: "web",
+		ChatID:  "1",
+		Content: "Error processing message: upstream request failed",
+	}
+
+	m.sendWithRetry(context.Background(), "web", w, msg)
+
+	if got.Content != OutboundErrorMarkerPrefix+OutboundErrorServiceUnavailable {
+		t.Fatalf("unexpected transformed web marker: %q", got.Content)
+	}
+}
+
 // --- Dispatcher exit tests (Step 1) ---
 
 func TestDispatcherExitsOnCancel(t *testing.T) {

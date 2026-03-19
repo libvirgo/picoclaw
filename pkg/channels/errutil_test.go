@@ -95,3 +95,51 @@ func TestClassifyNetError(t *testing.T) {
 		}
 	})
 }
+
+func TestClassifyUserFacingOutboundError(t *testing.T) {
+	t.Run("classifies quota exhaustion from raw runtime error", func(t *testing.T) {
+		code, ok := ClassifyUserFacingOutboundError(`Error processing message: API request failed:
+  Status: 402
+  Body:   {"error":"quota_exhausted","message":"credits exhausted"}`)
+		if !ok {
+			t.Fatal("expected error classification")
+		}
+		if code != OutboundErrorQuotaExhausted {
+			t.Fatalf("unexpected code: %q", code)
+		}
+	})
+
+	t.Run("classifies web error marker", func(t *testing.T) {
+		code, ok := ClassifyUserFacingOutboundError(OutboundErrorMarkerPrefix + OutboundErrorServiceUnavailable)
+		if !ok {
+			t.Fatal("expected marker classification")
+		}
+		if code != OutboundErrorServiceUnavailable {
+			t.Fatalf("unexpected code: %q", code)
+		}
+	})
+}
+
+func TestTransformUserFacingOutboundContent(t *testing.T) {
+	rawQuota := `Error processing message: API request failed:
+  Status: 402
+  Body:   {"error":"quota_exhausted","message":"credits exhausted"}`
+
+	if got := TransformUserFacingOutboundContent("telegram", rawQuota); got != "喵～当前可用额度已用尽，请充值后继续使用。" {
+		t.Fatalf("unexpected telegram content: %q", got)
+	}
+
+	if got := TransformUserFacingOutboundContent("web", rawQuota); got != OutboundErrorMarkerPrefix+OutboundErrorQuotaExhausted {
+		t.Fatalf("unexpected web content: %q", got)
+	}
+
+	rawGeneric := "Error processing message: upstream request failed"
+	if got := TransformUserFacingOutboundContent("slack", rawGeneric); got != "喵～我刚刚没有顺利处理这条消息，请稍后再试。" {
+		t.Fatalf("unexpected slack content: %q", got)
+	}
+
+	rawUnauthorized := "Error processing message: unauthorized"
+	if got := TransformUserFacingOutboundContent("telegram", rawUnauthorized); got != "喵～我刚刚没有顺利同步这次会话，请稍后再试。" {
+		t.Fatalf("unexpected telegram unauthorized content: %q", got)
+	}
+}

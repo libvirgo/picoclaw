@@ -545,6 +545,8 @@ func (m *Manager) sendWithRetry(ctx context.Context, name string, w *channelWork
 		return
 	}
 
+	msg.Content = TransformUserFacingOutboundContent(name, msg.Content)
+
 	// Pre-send: stop typing and try to edit placeholder
 	if m.preSend(ctx, name, msg, w.ch) {
 		return // placeholder was edited successfully, skip Send
@@ -911,5 +913,6 @@ func (m *Manager) SendToChannel(ctx context.Context, channelName, chatID, conten
 
 	// Fallback: direct send (should not happen)
 	channel, _ := m.channels[channelName]
+	msg.Content = TransformUserFacingOutboundContent(channelName, msg.Content)
 	return channel.Send(ctx, msg)
 }

@@ -130,7 +130,19 @@ func TestClassifyWebChannelError(t *testing.T) {
 	if !ok {
 		t.Fatal("expected error to be classified")
 	}
-	if code != webChannelErrorQuotaExhausted {
+	if code != OutboundErrorQuotaExhausted {
+		t.Fatalf("unexpected code: %q", code)
+	}
+}
+
+func TestClassifyWebChannelErrorMarker(t *testing.T) {
+	t.Parallel()
+
+	code, ok := classifyWebChannelError(OutboundErrorMarkerPrefix + OutboundErrorServiceUnavailable)
+	if !ok {
+		t.Fatal("expected marker to be classified")
+	}
+	if code != OutboundErrorServiceUnavailable {
 		t.Fatalf("unexpected code: %q", code)
 	}
 }
